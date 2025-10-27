@@ -1,4 +1,4 @@
--module(epmdless_client).
+-module(gsmlg_epmd_client).
 
 -behaviour(gen_server).
 
@@ -45,7 +45,7 @@
 -endif.
 
 start_link() ->
-    %% new option that allows users to not have to use epmdless_proto_dist
+    %% new option that allows users to not have to use gsmlg_epmd_proto_dist
     %% instead only set ERL_DIST_PORT
     Port = case os:getenv("ERL_DIST_PORT") of
                false ->
@@ -79,7 +79,7 @@ port_please(Name, Host) ->
         {error, noport} ->
             case os:getenv("EPMDLESS_REMSH_PORT") of
                 false ->
-                    %% new option that allows users to not have to use epmdless_proto_dist
+                    %% new option that allows users to not have to use gsmlg_epmd_proto_dist
                     %% instead only set ERL_DIST_PORT
                     case os:getenv("ERL_DIST_PORT") of
                         false ->

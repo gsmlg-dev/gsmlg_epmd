@@ -1,8 +1,8 @@
-{application, epmdless_test,
+{application, gsmlg_epmd_test,
  [{description, "An OTP application"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, {epmdless_test_app, []}},
+  {mod, {gsmlg_epmd_test_app, []}},
   {applications,
    [kernel,
     stdlib

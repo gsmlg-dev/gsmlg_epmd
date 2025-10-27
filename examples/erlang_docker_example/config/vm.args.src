@@ -1,7 +1,7 @@
--sname epmdless_test
+-sname gsmlg_epmd_test
 
--setcookie epmdless_test
+-setcookie gsmlg_epmd_test
 
 -start_epmd false
--epmd_module epmdless_static
+-epmd_module gsmlg_epmd_static
 -erl_epmd_port 8001

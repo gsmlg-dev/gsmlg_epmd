@@ -1,0 +1,102 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  test:
+    name: Test on OTP ${{ matrix.otp_version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        otp_version: ['23', '25', '27']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Erlang/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp_version }}
+          rebar3-version: '3.23'
+
+      - name: Install Elixir (for Mix dependencies)
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.15'
+          install-hex: true
+          install-rebar: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            _build
+            ~/.cache/rebar3
+          key: ${{ runner.os }}-rebar3-test-otp${{ matrix.otp_version }}-${{ hashFiles('**/rebar.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rebar3-test-otp${{ matrix.otp_version }}-
+
+      - name: Fetch dependencies
+        run: rebar3 get-deps
+
+      - name: Compile
+        run: rebar3 compile
+
+      - name: Run EUnit tests
+        run: rebar3 eunit --cover
+        continue-on-error: false
+
+      - name: Generate coverage report
+        run: rebar3 cover --verbose
+
+      - name: Upload coverage results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-otp${{ matrix.otp_version }}
+          path: _build/test/cover/
+          if-no-files-found: ignore
+
+      - name: Setup Haskell (for shelltestrunner)
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.4'
+          cabal-version: '3.10'
+
+      - name: Cache Cabal packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+          key: ${{ runner.os }}-cabal-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-cabal-
+
+      - name: Update Cabal
+        run: cabal update
+
+      - name: Install shelltestrunner
+        run: cabal install shelltestrunner --overwrite-policy=always
+
+      - name: Run shell tests
+        run: shelltests/run_tests.sh
+        continue-on-error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-otp${{ matrix.otp_version }}
+          path: |
+            _build/test/logs/
+            shelltests/*.test.out
+          if-no-files-found: ignore

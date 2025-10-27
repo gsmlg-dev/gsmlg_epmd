@@ -1,0 +1,79 @@
+name: Lint
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  lint:
+    name: Lint on OTP ${{ matrix.otp_version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        otp_version: ['23', '24', '25', '26', '27']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Erlang/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp_version }}
+          rebar3-version: '3.23'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            _build
+            ~/.cache/rebar3
+          key: ${{ runner.os }}-rebar3-otp${{ matrix.otp_version }}-${{ hashFiles('**/rebar.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rebar3-otp${{ matrix.otp_version }}-
+
+      - name: Cache PLT
+        uses: actions/cache@v3
+        with:
+          path: _build/default/*_plt
+          key: ${{ runner.os }}-plt-otp${{ matrix.otp_version }}-${{ hashFiles('**/rebar.config') }}
+          restore-keys: |
+            ${{ runner.os }}-plt-otp${{ matrix.otp_version }}-
+
+      - name: Install Elixir (for Mix dependencies)
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.15'
+          install-hex: true
+          install-rebar: true
+
+      - name: Fetch dependencies
+        run: rebar3 get-deps
+
+      - name: Compile with warnings as errors
+        run: rebar3 compile --warnings-as-errors
+        env:
+          DIAGNOSTIC: 1
+
+      - name: Run Elvis style checker
+        run: rebar3 lint
+        continue-on-error: false
+
+      - name: Run Dialyzer (report only)
+        run: rebar3 dialyzer || true
+        continue-on-error: true
+
+      - name: Upload Dialyzer results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dialyzer-results-otp${{ matrix.otp_version }}
+          path: |
+            _build/default/rebar3_*.dialyzer_warnings
+            _build/default/*.dialyzer_warnings
+          if-no-files-found: ignore

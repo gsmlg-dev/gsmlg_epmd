@@ -23,13 +23,13 @@ popd
 # goes anywhere with no output
 # So for now the "test" is just written below in this script until shelltest
 # works in github actions for this again.
-#shelltest -c --diff --all --debug --execdir epmdless_test/epmdless_test.test
+#shelltest -c --diff --all --debug --execdir gsmlg_epmd_test/gsmlg_epmd_test.test
 
 pushd epmdless_test/
 rebar3 release
 
-ERL_DIST_PORT=9001 _build/default/rel/epmdless_test/bin/epmdless_test daemon
+ERL_DIST_PORT=9001 _build/default/rel/gsmlg_epmd_test/bin/gsmlg_epmd_test daemon
 
-ERL_DIST_PORT=9001 _build/default/rel/epmdless_test/bin/epmdless_test ping
+ERL_DIST_PORT=9001 _build/default/rel/gsmlg_epmd_test/bin/gsmlg_epmd_test ping
 
-ERL_DIST_PORT=9001 _build/default/rel/epmdless_test/bin/epmdless_test stop
+ERL_DIST_PORT=9001 _build/default/rel/gsmlg_epmd_test/bin/gsmlg_epmd_test stop

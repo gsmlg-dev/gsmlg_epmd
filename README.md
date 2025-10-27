@@ -1,246 +1,585 @@
-# Erlang (and Elixir) distribution without EPMD, aka EPMDLESS #
+# GSMLG EPMD - Erlang Distribution without EPMD
 
-![Shellcheck](https://github.com/tsloughter/epmdless/workflows/Shellcheck/badge.svg) [![Hex pm](http://img.shields.io/hexpm/v/epmdless.svg?style=flat)](https://hex.pm/packages/epmdless) 
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+![OTP](https://img.shields.io/badge/OTP-21%2B-brightgreen.svg)
 
-Allows to connect erlang nodes, via Erlang distribution and without epmd, using tcp or tls.
+**Zero-configuration auto-meshing Erlang/Elixir clusters with TLS-based trust groups and mDNS discovery.**
 
-## Requirements ##
+---
 
-- Erlang >= 21
+## Overview
 
-## Usage ##
+GSMLG EPMD is a sophisticated fork of [epmdless](https://github.com/tsloughter/epmdless) that enables Erlang/Elixir distribution without the standard EPMD daemon. It provides three strategies for node connectivity:
 
-`epmdless` has 2 options for how ports are handled when Erlang distribution requests the port to use to connect to another node. With `epmdless_client` (variable ports) each node must first be added with a call to `epmdless_client:add_node` and this information is not automatically propagated between nodes like with EPMD, so `a` adding `b` and `c` and then connecting to them will not result in `b` and `c` creating a full mesh unless one of them has the other added to its mapping of nodes to ports with `epmdless_client:add_node`.
+1. **`gsmlg_epmd_static`** - Static port, automatic mesh (original epmdless feature)
+2. **`gsmlg_epmd_client`** - Variable ports, manual registration (original epmdless feature)
+3. **`gsmlg_epmd_tls`** ⭐ **NEW** - TLS-based trust groups with mDNS auto-discovery
 
-The other option is `epmdless_static` (static port). With this module the same port is used for every node it attempts to connect to, meaning when `a` connects to `b` and `c` a full mesh will be created because `b` will be able to look up `c`'s port and connect to it.
+### Why GSMLG EPMD?
 
-### Static Port ###
+**The Challenge:** Traditional Erlang distribution requires either:
+- Manual configuration of every node's IP and port
+- A centralized EPMD service
+- Pre-shared cookies across all nodes
 
-As of OTP-23.0 EPMD is still required to use a static port for distribution. This will be changed in an upcoming release, but for OTP releases before the upcoming support and for more dynamic options (see below) `epmdless` can be used and will continue to work on newer OTP-23.x versions.
+**The Solution:** GSMLG EPMD provides:
+- ✅ **Zero-configuration auto-discovery** via mDNS
+- ✅ **Certificate-based trust groups** instead of shared cookies
+- ✅ **Automatic mesh formation** within trusted groups
+- ✅ **Secure dynamic cookie exchange** over TLS
+- ✅ **Group isolation** - different groups can't connect, even with the same CA
 
-At this time [rebar3 nightly](https://rebar3-nightly.s3.amazonaws.com/rebar3) is required for generating a release that will have working remote console and rpc.
+---
 
-#### Docker Usage: Connecting Nodes ####
+## ⭐ NEW: TLS-Based Trust Groups with Auto-Discovery
 
-An example project `examples/erlang_docker_example` contains a project setup to use `epmdless_static` as the `epmd_module` and a `docker-compose.yml` config that will bring up multiple nodes that all use the same port for distribution each on the same network with specific IP addresses.
+The headline feature of GSMLG EPMD is the new `gsmlg_epmd_tls` module that combines:
 
-The release's `vm.args.src` uses `epmdless_static` for `epmd_module` which results in the same port being used for any lookup of a node. Since the same port is used for each node the port is simply set in `vm.args.src` with `-erl_epmd_port 8001`:
+### Certificate-Based Trust Groups
 
-```
--sname epmdless_test
-
--setcookie epmdless_test
-
--start_epmd false
--epmd_module epmdless_static
--erl_epmd_port 8001
-```
-
-In `docker-compose.yml` 3 nodes are created `node_a`, `node_b` and `node_c`: 
-
-```yaml
-  node_a:
-    container_name: node_a
-    hostname: node_a
-    build: .
-```
-
-After running `docker-compse up` we can show that the full mesh network is created in this case when we connect `node_a` to `node_b` and `node_c`:
+Nodes use X.509 certificates with:
+- **CA-based authentication** - Nodes must have certificates signed by a trusted CA
+- **Group membership in OU field** - Certificate's Organizational Unit defines the trust group
+- **Automatic isolation** - Nodes with different OU values won't connect, even with the same CA
 
 ```
-$ docker exec -ti node_a bin/epmdless_test remote_console
+Example Certificate Structure:
+  Subject: CN=node1, OU=production, O=GSMLG
+           ↑             ↑
+       Node name    Trust group
 
-(epmdless_test@node_a)1> net_adm:ping(epmdless_test@node_b).
-pong
-(epmdless_test@node_a)2> net_adm:ping(epmdless_test@node_c).
-pong
-(epmdless_test@node_a)3> nodes().
-[epmdless_test@node_b,epmdless_test@node_c]
+Result:
+  ✓ node1 (OU=production) + node2 (OU=production) → Auto-mesh
+  ✗ node1 (OU=production) + node3 (OU=staging)    → Isolated
 ```
 
-Now open a `remote_console` on `node_c` to see that it is connected to both `node_a` and `node_b`:
+### mDNS Service Discovery
+
+- Nodes advertise themselves as `_epmd._tcp.local` services
+- Automatic peer discovery on the local network
+- No manual IP address configuration needed
+- Group information included in service advertisement
+
+### Secure Dynamic Cookie Exchange
+
+- No pre-shared cookies required
+- Each node generates a 256-bit random cookie
+- Cookies exchanged securely over TLS after mutual authentication
+- Automatic Erlang distribution setup
+
+### Complete Auto-Mesh Flow
 
 ```
-$ docker exec -ti node_c bin/epmdless_test remote_console
-
-(epmdless_test@node_c)1> nodes().
-[epmdless_test@node_a,epmdless_test@node_b]
+1. Node starts → Reads certificate (OU=production)
+2. Advertises via mDNS → Other nodes discover it
+3. Peer discovered → Check group match (OU comparison)
+4. Groups match → Initiate TLS connection
+5. TLS handshake → Mutual certificate authentication
+6. Cookie exchange → Over secure TLS channel
+7. Auto-connect → Full mesh formed!
 ```
 
-### Release: Variable Ports ###
+**No configuration, no manual connections, just start the nodes! 🚀**
 
-Below in section [Manual Usage](#manual-usage) you'll find details on how to use `epmdless` without building a release, this is useful for playing around or developing on `epmdless`, in this section we will be using a release built with the latest `rebar3` nightly, OTP-23 and 
+---
 
-The example project is under `examples/erlang_variable_ports_example`. The `rebar3` configuration shows how to include `epmdless` in your project and release:
+## Quick Start
+
+### Requirements
+
+- **Erlang/OTP**: 21 or newer
+- **OpenSSL**: For certificate generation
+- **Docker** (optional): For running examples
+
+### Installation
+
+Add to your `rebar.config`:
 
 ```erlang
-{erl_opts, [debug_info]}.
-{deps, [epmdless]}.
+{deps, [
+    {gsmlg_epmd, {git, "https://github.com/gsmlg-dev/gsmlg_epmd", {branch, "master"}}}
+]}.
+```
 
-{relx, [{release, {epmdless_test, "0.1.0"},
-         [epmdless,
-          epmdless_test]},
-        {dev_mode, false},
-        {include_erts, true},
-        {extended_start_script, true},
+Add to your release configuration (not `.app.src`):
+
+```erlang
+{relx, [{release, {my_app, "1.0.0"},
+         [gsmlg_epmd,  % Add here
+          my_app]},
         {vm_args_src, "config/vm.args.src"}]}.
 ```
 
-Note that `epmdless` is kept in the release's list of applications and not in a `.app.src` list of applications. This is because it is not an actual runtime dependency of the application `epmdless_test` but a dependency of the particular release that applications is being used in.
+---
 
-In `vm.args.src` you'll find `epmdless_client` being setup as the `epmd_module` and the `epmd` daemon being disabled:
+## Usage Modes
 
+### Mode 1: TLS Auto-Mesh (NEW ⭐)
+
+**Best for:** Production clusters, zero-config deployments, maximum security
+
+#### 1. Generate Certificates
+
+```bash
+# Create CA and node certificates
+./tools/generate_certs.sh production node1
+./tools/generate_certs.sh production node2
 ```
--sname ${NAME}@localhost
 
--setcookie epmdless_test
+This creates certificates with `OU=production` for group membership.
 
+#### 2. Configure VM Args
+
+```erlang
+# vm.args
+-sname node1@localhost
+-setcookie temporary  # Will be replaced by dynamic exchange
 -start_epmd false
--epmd_module epmdless_client
+-epmd_module gsmlg_epmd_tls
+-proto_dist inet_tls
+-ssl_dist_optfile /path/to/ssl_dist.config
 ```
 
-Note that in this example there is no `-erl_epmd_port` in the `vm.args.src` because we will not use the same port for every node.
+#### 3. Set Environment Variables
 
-Build the release as usual:
-
-```
-$ rebar3 release
-===> Plugin rebar3_hex not available. It will not be used.
-===> Verifying dependencies...
-===> Compiling epmdless
-===> Compiling epmdless_test
-===> Assembling release... epmdless_test-0.1.0
-===> Warnings generating release:
-*WARNING* Missing application sasl. Can not upgrade with this release
-===> Release successfully assembled: _build/default/rel/epmdless_test
+```bash
+export GSMLG_EPMD_TLS_CERTFILE=/path/to/cert.pem
+export GSMLG_EPMD_TLS_KEYFILE=/path/to/key.pem
+export GSMLG_EPMD_TLS_CACERTFILE=/path/to/ca-cert.pem
+export GSMLG_EPMD_AUTO_CONNECT=true
+export GSMLG_EPMD_MDNS_ENABLE=true
+export ERL_DIST_PORT=8001
 ```
 
-To run a release on a specific port set the `ERL_DIST_PORT` environment variable and run the console:
+#### 4. Start Node
 
-```
-$ NAME=a ERL_DIST_PORT=8081 _build/default/rel/epmdless_test/bin/epmdless_test console
-(a@localhost)1>
-```
-
-Connecting with a remote shell works the same:
-
-```
-$ NAME=a ERL_DIST_PORT=8081 _build/default/rel/epmdless_test/bin/epmdless_test remote_console
-(a@localhost)1>
+```bash
+erl -config sys.config -args_file vm.args -pa _build/default/lib/*/ebin
 ```
 
-Or running an RPC:
+**Nodes with matching groups will automatically discover and connect!**
 
-```
-$ NAME=a ERL_DIST_PORT=8081 _build/default/rel/epmdless_test/bin/epmdless_test rpc 'erlang nodes [hidden]'
-[c371@rosa]
-```
+#### Example: Docker Compose Auto-Mesh
 
-In this case, since the release is running on OTP-23, [erl_call](http://erlang.org/doc/man/erl_call.html) is used for `rpc` and `eval` commands and assign themselves a hidden nodename and in this case it gives itself the name `c371@rosa`.
+See the complete working example in `examples/tls_auto_mesh/`:
 
-Run another instance on a separate port and connect it to the first
+```bash
+cd examples/tls_auto_mesh
+make certs  # Generate certificates
+make up     # Start 4 nodes (3 production, 1 staging)
 
-```
-$ NAME=b ERL_DIST_PORT=8082 _build/default/rel/epmdless_test/bin/epmdless_test console
-(b@localhost)1> epmdless_client:add_node(a@localhost, 8081).
-ok
-(b@localhost)2> epmdless_client:list_nodes().
-[{{"a",{127,0,0,1}},{"localhost",8081}}]
-(b@localhost)3> net_adm:ping(a@localhost).
-pong
-(b@localhost)4> nodes().
-[a@localhost]
+# Check auto-mesh
+make shell-node1
+# nodes(). → [node2@node2, node3@node3]  ✓ Auto-connected!
+
+make shell-node4  # Staging group node
+# nodes(). → []  ✓ Isolated from production
 ```
 
-Since the mapping of nodes to ports must be kept manually by calling `add_node/2` if a third node `c` is added and connected to `a` it will not create a full mesh as you'd expect with regular usage of Erlang distribution and EPMD. That is, unless you first use `add_node/2` to add `b` and its port to the mapping in `c`, then it will be able to automatically create the full mesh.
+---
 
-## Manual Usage ##
+### Mode 2: Static Port (Original)
 
-The following details how to use `epmdless` with `erl` directly.
+**Best for:** Simple Docker deployments, all nodes use same port
 
-### Example Usage with Multiple Ports ###
+#### Configuration
 
-To play around with `epmdless` and get a feel for how it works the simplest way is to run a couple separate `erl` shells and connect them.
-
-Only run the Erlang shell commands after havng start both `a`, `b`, and `c`, each on a different port `8001`, `8002` and `8003`:
-
-```
-ERL_DIST_PORT=8002 erl -sname b@localhost -start_epmd false -epmd_module epmdless_client -pa _build/default/lib/epmdless/ebin
-
-> 
-```
-
-```
-ERL_DIST_PORT=8001 erl -sname a@localhost -start_epmd false -epmd_module epmdless_client -pa _build/default/lib/epmdless/ebin
-
-(a@localhost)1> epmdless_client:add_node(b@localhost, 8002).
-ok
-(a@localhost)2> epmdless_client:list_nodes().
-[{{"b",{127,0,0,1}},{"localhost",8002}}]
-
+```erlang
+# vm.args
+-sname my_node
+-setcookie my_cookie
+-start_epmd false
+-epmd_module gsmlg_epmd_static
+-erl_epmd_port 8001
 ```
 
-```
-ERL_DIST_PORT=8003 erl -sname c@localhost -start_epmd false -epmd_module epmdless_client -pa _build/default/lib/epmdless/ebin
+All nodes use port 8001. When node A connects to B and C, a full mesh is automatically created.
 
-(c@localhost)1> epmdless_client:add_node(a@localhost, 8001).                                                ok
-(c@localhost)2> epmdless_client:list_nodes().
-[{{"a",{127,0,0,1}},{"localhost",8001}}]
-(c@localhost)3> net_adm:ping(a@localhost).
-pong
-(c@localhost)4> 2020-05-17T09:14:44.300102-06:00 error: ** Cannot get connection id for node c@localhost
-2020-05-17T09:14:51.299676-06:00 warning: global: c@localhost failed to connect to b@localhost
-(c@localhost)5> nodes().
-[a@localhost]
-(c@localhost)6> epmdless_client:list_nodes().
-[{{"a",{127,0,0,1}},{"localhost",8001}}]
-```
+**Example:** `examples/erlang_docker_example/`
 
-Node `a` is connected to `b` and `c` but `c` and `b` are not able to connect to each other because they have no had their respective ports added to the `epmdless_client` state with `add_node/2`. This results in the warnings about `failed to connect to b@localhost` on node `c`.
+---
 
-### Connecting to epmdless nodes ###
+### Mode 3: Variable Ports (Original)
 
-As of OTP-23 there is an option `-dist_listen` which keeps a remote shell from binding to a listen port -- and implies `-hidden` so this argument is not needed. Before this option a port had to be bound to even when wanting to simply use `erl -remsh a@localhost`. This complicated use of `epmdless` where we want to tell it the port of the remote node `a@localhost` and not care about any port for the new node that will make the remote connection.
+**Best for:** Dynamic port allocation, manual control
 
-So with OTP-23 it is possible to use the same `ERL_DIST_PORT` environment variable as used above but in this case it will not be used to listen but only to connect to `a@localhost`:
+#### Configuration
 
-```
-$ ERL_DIST_PORT=8001 erl -dist_listen false -remsh a@localhost -epmd_module epmdless_client -pa _build/default/lib/epmdless/ebin
-
-(a@localhost)1> nodes(hidden).
-['NAXDANHFJWVF@rosa']
+```erlang
+# vm.args
+-sname my_node@localhost
+-setcookie my_cookie
+-start_epmd false
+-epmd_module gsmlg_epmd_client
 ```
 
-For backwards compatibility reasons the environment variable `EPMDLESS_REMSH_PORT` is also still supported and can be used in place of `ERL_DIST_PORT` and will need to if on OTP before 23 because the new node will have to bind to a listen port.
+#### Usage
 
-Also in OTP-23 the option `-address [Hostname:]Port` was added to `erl_call`, a program for communicating with a distributed Erlang node. This is how the `relx` script does the `rpc` and `eval` commands if run on OTP-23:
+```erlang
+% Manually register nodes
+gsmlg_epmd_client:add_node('node2@host2', 8002).
+gsmlg_epmd_client:add_node('node3@host3', 8003).
 
-```
-$ _build/default/rel/epmdless_test/erts-11.0/bin/erl_call  -r -address :8081 -c epmdless_test -a 'erlang nodes [hidden]'
-[c899@rosa]
-```
-
-With OTP-22 and earlier a remote shell requires setting `EPMDLESS_REMSH_PORT` to the port the node you want to connect to is using and optionally give a port for `ERL_DIST_PORT` -- if not given then `0` is uesd and a random port is chosen:
-
-```
-$ EPMDLESS_REMSH_PORT=8081 erl -sname a_remsh@localhost -remsh epmdless_test@localhost -epmd_module epmdless_client -hidden -setcookie epmdless_test -pa _build/default/checkouts/epmdless/ebin
-
-(epmdless_test@localhost)1> nodes(hidden).
-[a_remsh@localhost]
+% Then connect
+net_adm:ping('node2@host2').
 ```
 
-## Tests ##
+**Example:** `examples/erlang_variable_ports_example/`
 
-Testing is done with [shelltestrunner](https://github.com/simonmichael/shelltestrunner/) and an example project under `shelltests/epmdless_test`. From that directory run `shelltest -c --diff --all --execdir -- epmdless_test.test`. It is also run with the latest `rebar3` and `relx` in github actions for this repo.
+---
 
-## Other example projects ###
+## Configuration Reference
 
-Note: These will be updated for the latest `epmdless` options and moved to the `examples/` directory. But for now refer to these projects 
+### TLS Auto-Mesh Configuration
 
-Please also refer: https://github.com/oltarasenko/erlang_distribution_in_docker for an example of complete project running epmdless.
+#### Environment Variables
 
-### TLS example for Elixir ###
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GSMLG_EPMD_TLS_CERTFILE` | Yes | - | Path to node certificate |
+| `GSMLG_EPMD_TLS_KEYFILE` | Yes | - | Path to private key |
+| `GSMLG_EPMD_TLS_CACERTFILE` | Yes | - | Path to CA certificate |
+| `GSMLG_EPMD_TLS_PORT` | No | 4369 | TLS server port |
+| `GSMLG_EPMD_GROUP` | No | (from cert) | Override certificate OU |
+| `GSMLG_EPMD_AUTO_CONNECT` | No | true | Auto-connect discovered nodes |
+| `GSMLG_EPMD_MDNS_ENABLE` | No | true | Enable mDNS discovery |
+| `ERL_DIST_PORT` | Yes | - | Erlang distribution port |
 
-Here is a small project which shows how to setup EPMDLess with TLS for Elixir: https://github.com/oltarasenko/epmdless-elixir-example
+#### Application Configuration (sys.config)
 
-(Please also see a discussion here: https://github.com/oltarasenko/epmdless/issues/11)
+```erlang
+{gsmlg_epmd, [
+    {tls_certfile, "/path/to/cert.pem"},
+    {tls_keyfile, "/path/to/key.pem"},
+    {tls_cacertfile, "/path/to/ca.pem"},
+    {tls_port, 4369},
+    {group, "production"},
+    {auto_connect, true},
+    {mdns_enabled, true}
+]}.
+```
+
+#### SSL Distribution Configuration (ssl_dist.config)
+
+```erlang
+[
+  {server, [
+    {certfile, "/path/to/cert.pem"},
+    {keyfile, "/path/to/key.pem"},
+    {cacertfile, "/path/to/ca.pem"},
+    {verify, verify_peer},
+    {fail_if_no_peer_cert, true}
+  ]},
+  {client, [
+    {certfile, "/path/to/cert.pem"},
+    {keyfile, "/path/to/key.pem"},
+    {cacertfile, "/path/to/ca.pem"},
+    {verify, verify_peer}
+  ]}
+].
+```
+
+---
+
+## Tools
+
+### Certificate Generation
+
+Use the included script to generate certificates:
+
+```bash
+./tools/generate_certs.sh <group_name> <node_name> [output_dir]
+
+# Examples
+./tools/generate_certs.sh production node1
+./tools/generate_certs.sh staging web-server ./my-certs
+```
+
+**What it does:**
+- Creates a CA (if it doesn't exist)
+- Generates node certificate with OU set to group name
+- Signs certificate with CA
+- Validates the certificate chain
+- Sets proper file permissions
+
+**Output:**
+```
+certs/
+├── ca/
+│   ├── ca-cert.pem
+│   └── ca-key.pem
+└── production/
+    └── node1/
+        ├── cert.pem
+        ├── key.pem
+        └── ca-cert.pem
+```
+
+---
+
+## Architecture
+
+### TLS Auto-Mesh Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ gsmlg_epmd_app                                               │
+│   └─▶ gsmlg_epmd_sup (supervisor)                           │
+│       ├─▶ gsmlg_epmd_cookie (gen_server)                    │
+│       │   └─▶ Cookie generation & storage                   │
+│       │                                                       │
+│       ├─▶ gsmlg_epmd_tls (gen_server)                       │
+│       │   ├─▶ EPMD callbacks                                │
+│       │   └─▶ Node registry                                 │
+│       │                                                       │
+│       ├─▶ gsmlg_epmd_tls_server (gen_server) *              │
+│       │   ├─▶ TLS listener (mutual auth)                    │
+│       │   └─▶ Connection acceptor                           │
+│       │                                                       │
+│       └─▶ gsmlg_epmd_mdns (gen_server) *                    │
+│           ├─▶ mDNS advertisement                            │
+│           └─▶ Service discovery                             │
+│                                                               │
+│       * Dynamically started on node registration             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Modules
+
+| Module | Purpose |
+|--------|---------|
+| **gsmlg_epmd_tls** | Main EPMD callback, coordinates all services |
+| **gsmlg_epmd_cert** | Certificate loading, CA validation, group extraction |
+| **gsmlg_epmd_cookie** | Cookie generation and secure exchange protocol |
+| **gsmlg_epmd_tls_server** | TLS server for incoming connections |
+| **gsmlg_epmd_mdns** | mDNS service discovery and advertisement |
+| **gsmlg_epmd_sup** | Supervisor for all services |
+| **gsmlg_epmd_client** | Variable ports EPMD (original) |
+| **gsmlg_epmd_static** | Static port EPMD (original) |
+
+---
+
+## Examples
+
+### 1. TLS Auto-Mesh with Docker Compose
+
+**Location:** `examples/tls_auto_mesh/`
+
+Demonstrates:
+- 4 nodes (3 in "production" group, 1 in "staging" group)
+- Automatic mesh formation via mDNS
+- Group isolation (staging node can't connect to production)
+- Dynamic cookie exchange
+- Full TLS configuration
+
+```bash
+cd examples/tls_auto_mesh
+make certs && make up
+```
+
+### 2. Static Port with Docker
+
+**Location:** `examples/erlang_docker_example/`
+
+Traditional static port setup with Docker Compose.
+
+### 3. Variable Ports
+
+**Location:** `examples/erlang_variable_ports_example/`
+
+Manual node registration with variable ports.
+
+---
+
+## Security Features
+
+### TLS Auto-Mesh Security
+
+✅ **Mutual TLS Authentication**
+- Both client and server must present valid certificates
+- Certificates validated against trusted CA
+
+✅ **Certificate Chain Validation**
+- Full chain verification up to root CA
+- Support for intermediate CAs
+- Expiration date checking
+
+✅ **Group-Based Access Control**
+- Trust groups encoded in certificate OU field
+- Automatic isolation of different groups
+- Same CA, different OU = no connection
+
+✅ **Secure Cookie Exchange**
+- 256-bit cryptographically random cookies
+- Exchanged only after TLS authentication
+- No pre-shared secrets required
+- Protocol versioning for compatibility
+
+✅ **Modern TLS**
+- TLS 1.2 and 1.3 support
+- Strong cipher suites
+- Perfect forward secrecy
+- No fallback to insecure protocols
+
+---
+
+## API Reference
+
+### gsmlg_epmd_tls
+
+```erlang
+%% Register a discovered node (called internally)
+gsmlg_epmd_tls:register_discovered_node(NodeInfo) -> ok.
+
+%% List all discovered nodes
+gsmlg_epmd_tls:list_discovered_nodes() -> #{node() => map()}.
+```
+
+### gsmlg_epmd_client
+
+```erlang
+%% Add a node to the registry
+gsmlg_epmd_client:add_node(Node, Port) -> ok.
+gsmlg_epmd_client:add_node(NodeName, Host, IP, Port) -> ok.
+
+%% Remove a node
+gsmlg_epmd_client:remove_node(Node) -> ok.
+
+%% List all registered nodes
+gsmlg_epmd_client:list_nodes() -> [{Node, {Host, Port}}].
+```
+
+### gsmlg_epmd_cert
+
+```erlang
+%% Load TLS configuration
+gsmlg_epmd_cert:load_config() -> {ok, Config} | {error, Reason}.
+
+%% Get SSL options for server/client
+gsmlg_epmd_cert:get_server_opts() -> {ok, Opts} | {error, Reason}.
+gsmlg_epmd_cert:get_client_opts(ServerName) -> {ok, Opts} | {error, Reason}.
+
+%% Extract group from certificate
+gsmlg_epmd_cert:extract_group(Cert) -> {ok, Group} | {error, Reason}.
+```
+
+---
+
+## Troubleshooting
+
+### Nodes not auto-connecting?
+
+1. **Check certificates:**
+   ```bash
+   openssl x509 -in cert.pem -noout -subject
+   # Should show: OU=<group_name>
+   ```
+
+2. **Verify group match:**
+   ```erlang
+   gsmlg_epmd_cert:get_group().
+   % Should return {ok, "production"} or your group name
+   ```
+
+3. **Check mDNS:**
+   - Ensure network allows multicast
+   - Docker: Use bridge network (not host)
+   - Check logs for "mDNS service advertised"
+
+4. **Check TLS handshake:**
+   ```bash
+   openssl verify -CAfile ca-cert.pem cert.pem
+   # Should show: cert.pem: OK
+   ```
+
+### TLS errors?
+
+1. **"certificate verify failed"**
+   - Certificate not signed by configured CA
+   - CA certificate path incorrect
+   - Certificate expired
+
+2. **"group mismatch"**
+   - Nodes have different OU fields
+   - This is expected behavior for isolation!
+
+3. **"no peer certificate"**
+   - `fail_if_no_peer_cert` is true but peer didn't send cert
+   - Check ssl_dist.config on both nodes
+
+---
+
+## Testing
+
+Run the test suite:
+
+```bash
+cd shelltests
+./run_tests.sh
+```
+
+This builds a release and tests:
+- Node startup with EPMD replacement
+- Daemon mode
+- Remote console
+- Basic connectivity
+
+---
+
+## Comparison with Original epmdless
+
+| Feature | Original epmdless | GSMLG EPMD |
+|---------|------------------|------------|
+| Static port mode | ✅ | ✅ (renamed to gsmlg_epmd_static) |
+| Variable port mode | ✅ | ✅ (renamed to gsmlg_epmd_client) |
+| TLS distribution support | ✅ | ✅ Enhanced |
+| mDNS auto-discovery | ❌ | ✅ NEW |
+| Certificate-based trust | ❌ | ✅ NEW |
+| Dynamic cookie exchange | ❌ | ✅ NEW |
+| Zero-config auto-mesh | ❌ | ✅ NEW |
+| Group isolation | ❌ | ✅ NEW |
+
+---
+
+## Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+---
+
+## License
+
+Apache License 2.0
+
+---
+
+## Credits
+
+- **Original epmdless**: [tsloughter/epmdless](https://github.com/tsloughter/epmdless)
+- **GSMLG EPMD enhancements**: TLS trust groups, mDNS discovery, auto-meshing
+- **mDNS library**: [shortishly/mdns](https://github.com/shortishly/mdns)
+
+---
+
+## Links
+
+- **GitHub**: https://github.com/gsmlg-dev/gsmlg_epmd
+- **Original epmdless**: https://github.com/tsloughter/epmdless
+- **Documentation**: See `CLAUDE.md` for developer documentation
+- **Security**: See `SECURITY.md` for security best practices (coming soon)
+
+---
+
+## Support
+
+For issues, questions, or contributions:
+- **Issues**: https://github.com/gsmlg-dev/gsmlg_epmd/issues
+- **Discussions**: Use GitHub Discussions for questions
+
+---
+
+**Built with ❤️ for the Erlang/Elixir community**

@@ -4,7 +4,7 @@
 %% Always returns the same port for any node it is asked about. Set the port either with
 %% `-erl_epmd_port Port' in `vm.args' or with environment variable `ERL_DIST_PORT'
 %% @end
--module(epmdless_static).
+-module(gsmlg_epmd_static).
 
 -behaviour(gen_server).
 

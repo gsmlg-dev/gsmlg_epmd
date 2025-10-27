@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Production Group - Node 1
+  node1:
+    container_name: tls_node1
+    hostname: node1
+    build:
+      context: ../..
+      dockerfile: examples/tls_auto_mesh/Dockerfile
+    environment:
+      - NODE_NAME=node1
+      - HOSTNAME=node1
+      - ERL_DIST_PORT=8001
+      - GSMLG_EPMD_TLS_CERTFILE=/app/certs/cert.pem
+      - GSMLG_EPMD_TLS_KEYFILE=/app/certs/key.pem
+      - GSMLG_EPMD_TLS_CACERTFILE=/app/certs/ca-cert.pem
+      - GSMLG_EPMD_TLS_PORT=4369
+      - GSMLG_EPMD_GROUP=production
+      - GSMLG_EPMD_AUTO_CONNECT=true
+      - GSMLG_EPMD_MDNS_ENABLE=true
+    volumes:
+      - ./certs/production/node1:/app/certs:ro
+    networks:
+      - epmd_network
+    stdin_open: true
+    tty: true
+
+  # Production Group - Node 2
+  node2:
+    container_name: tls_node2
+    hostname: node2
+    build:
+      context: ../..
+      dockerfile: examples/tls_auto_mesh/Dockerfile
+    environment:
+      - NODE_NAME=node2
+      - HOSTNAME=node2
+      - ERL_DIST_PORT=8001
+      - GSMLG_EPMD_TLS_CERTFILE=/app/certs/cert.pem
+      - GSMLG_EPMD_TLS_KEYFILE=/app/certs/key.pem
+      - GSMLG_EPMD_TLS_CACERTFILE=/app/certs/ca-cert.pem
+      - GSMLG_EPMD_TLS_PORT=4369
+      - GSMLG_EPMD_GROUP=production
+      - GSMLG_EPMD_AUTO_CONNECT=true
+      - GSMLG_EPMD_MDNS_ENABLE=true
+    volumes:
+      - ./certs/production/node2:/app/certs:ro
+    networks:
+      - epmd_network
+    stdin_open: true
+    tty: true
+
+  # Production Group - Node 3
+  node3:
+    container_name: tls_node3
+    hostname: node3
+    build:
+      context: ../..
+      dockerfile: examples/tls_auto_mesh/Dockerfile
+    environment:
+      - NODE_NAME=node3
+      - HOSTNAME=node3
+      - ERL_DIST_PORT=8001
+      - GSMLG_EPMD_TLS_CERTFILE=/app/certs/cert.pem
+      - GSMLG_EPMD_TLS_KEYFILE=/app/certs/key.pem
+      - GSMLG_EPMD_TLS_CACERTFILE=/app/certs/ca-cert.pem
+      - GSMLG_EPMD_TLS_PORT=4369
+      - GSMLG_EPMD_GROUP=production
+      - GSMLG_EPMD_AUTO_CONNECT=true
+      - GSMLG_EPMD_MDNS_ENABLE=true
+    volumes:
+      - ./certs/production/node3:/app/certs:ro
+    networks:
+      - epmd_network
+    stdin_open: true
+    tty: true
+
+  # Staging Group - Node 4 (isolated from production)
+  node4:
+    container_name: tls_node4
+    hostname: node4
+    build:
+      context: ../..
+      dockerfile: examples/tls_auto_mesh/Dockerfile
+    environment:
+      - NODE_NAME=node4
+      - HOSTNAME=node4
+      - ERL_DIST_PORT=8001
+      - GSMLG_EPMD_TLS_CERTFILE=/app/certs/cert.pem
+      - GSMLG_EPMD_TLS_KEYFILE=/app/certs/key.pem
+      - GSMLG_EPMD_TLS_CACERTFILE=/app/certs/ca-cert.pem
+      - GSMLG_EPMD_TLS_PORT=4369
+      - GSMLG_EPMD_GROUP=staging
+      - GSMLG_EPMD_AUTO_CONNECT=true
+      - GSMLG_EPMD_MDNS_ENABLE=true
+    volumes:
+      - ./certs/staging/node4:/app/certs:ro
+    networks:
+      - epmd_network
+    stdin_open: true
+    tty: true
+
+networks:
+  epmd_network:
+    driver: bridge

@@ -1,4 +1,4 @@
--module(epmdless_dist).
+-module(gsmlg_epmd_dist).
 
 -export([add_node/2, add_node/3]).
 -export([remove_node/1]).
@@ -10,7 +10,7 @@
       Node :: atom(),
       Port :: inet:port_number().
 add_node(Node, Port) ->
-    epmdless_client:add_node(Node, Port).
+    gsmlg_epmd_client:add_node(Node, Port).
 
 -spec add_node(Node, Host, Port) -> ok when
       Node :: atom(),
@@ -19,7 +19,7 @@ add_node(Node, Port) ->
 add_node(Node, Host, Port) ->
     case inet:getaddr(Host, inet) of
         {ok, IP} ->
-            epmdless_client:add_node(Node, Host, IP, Port);
+            gsmlg_epmd_client:add_node(Node, Host, IP, Port);
         {error, Reason} ->
             {error, Reason}
     end.
@@ -27,14 +27,14 @@ add_node(Node, Host, Port) ->
 -spec remove_node(Node) -> ok when
       Node :: atom().
 remove_node(Node) ->
-    epmdless_client:remove_node(Node).
+    gsmlg_epmd_client:remove_node(Node).
 
 -spec list_nodes() -> [{Node, {Host, Port}}] when
       Node :: {atom(), inet:ip_address()},
       Host :: inet:hostname() | inet:ip_address(),
       Port :: {inet:port_number()}.
 list_nodes() ->
-    epmdless_client:list_nodes().
+    gsmlg_epmd_client:list_nodes().
 
 -spec set_nodes(Nodes) -> ok when
       Nodes :: [{Node, Port}],

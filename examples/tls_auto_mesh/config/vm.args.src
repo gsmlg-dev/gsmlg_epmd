@@ -1,0 +1,20 @@
+-sname ${NODE_NAME}@${HOSTNAME}
+
+## Note: Cookie will be dynamically exchanged via TLS
+## This is just a temporary placeholder
+-setcookie temporary_cookie
+
+## Disable standard EPMD
+-start_epmd false
+
+## Use gsmlg_epmd_tls as EPMD replacement
+-epmd_module gsmlg_epmd_tls
+
+## Use TLS for distribution
+-proto_dist inet_tls
+
+## SSL distribution configuration file
+-ssl_dist_optfile /app/config/ssl_dist.config
+
+## Allow distribution to use TLS
+-kernel inet_dist_use_interface {0,0,0,0}

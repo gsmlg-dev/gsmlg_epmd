@@ -1,7 +1,7 @@
--module(epmdless_proto_dist).
+-module(gsmlg_epmd_proto_dist).
 
 %% @doc
-%% callback module for epmdless distribution protocol
+%% callback module for gsmlg_epmd distribution protocol
 %% @end
 
 
@@ -10,8 +10,8 @@
 
 listen(Name) ->
     %% loading application to get access to configuration
-    application:load(epmdless),
-    Port = case {os:getenv("EPMDLESS_DIST_PORT"), application:get_env(epmdless, listen_port)} of
+    application:load(gsmlg_epmd),
+    Port = case {os:getenv("EPMDLESS_DIST_PORT"), application:get_env(gsmlg_epmd, listen_port)} of
         {false, {ok, P}}       -> P;
         {P, _} when P /= false -> list_to_integer(P);
         _                      -> 0
@@ -52,8 +52,8 @@ childspecs() ->
 
 
 get_module() ->
-    application:load(epmdless),
-    case application:get_env(epmdless, transport) of
+    application:load(gsmlg_epmd),
+    case application:get_env(gsmlg_epmd, transport) of
         {ok, tls} -> inet_tls_dist;
         _         -> inet_tcp_dist
     end.

@@ -1,6 +1,6 @@
--sname epmdless_test@localhost
+-sname gsmlg_epmd_test@localhost
 
--setcookie epmdless_test
+-setcookie gsmlg_epmd_test
 
 -start_epmd false
--epmd_module epmdless_client
+-epmd_module gsmlg_epmd_client

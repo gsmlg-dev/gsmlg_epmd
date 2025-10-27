@@ -1,8 +1,8 @@
-{application, epmdless_test,
- [{description, "An OTP application"},
+{application, gsmlg_epmd_test,
+ [{description, "TLS Auto-Mesh Example for GSMLG EPMD"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, {epmdless_test_app, []}},
+  {mod, {gsmlg_epmd_test_app, []}},
   {applications,
    [kernel,
     stdlib

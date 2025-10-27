@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%% @doc epmdless_test top level supervisor.
+%% @doc gsmlg_epmd_test top level supervisor.
 %% @end
 %%%-------------------------------------------------------------------
 
--module(epmdless_test_sup).
+-module(gsmlg_epmd_test_sup).
 
 -behaviour(supervisor).
 
