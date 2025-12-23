@@ -18,6 +18,11 @@ in
     inotify-tools
   ];
 
+  # Enable Erlang support
+  languages.erlang.enable = true;
+  languages.erlang.package = pkgs-stable.beam27Packages.erlang;
+
+  # Enable Elixir support (for Mix dependencies like mdns)
   languages.elixir.enable = true;
   languages.elixir.package = pkgs-stable.beam27Packages.elixir;
 

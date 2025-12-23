@@ -1,0 +1,117 @@
+# GitHub Actions Workflow: E2E Node Connection Tests
+# Tests all three GSMLG EPMD connection modes across multiple OTP versions
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [master, 'feature/**']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  e2e-tests:
+    name: E2E ${{ matrix.mode }} (OTP ${{ matrix.otp_version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        mode: [tls, static, variable]
+        otp_version: ['23', '25', '27']
+      fail-fast: false  # Continue other jobs even if one fails
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Erlang/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp_version }}
+          rebar3-version: '3.22'
+
+      - name: Enable multicast for mDNS (TLS mode only)
+        if: matrix.mode == 'tls'
+        run: |
+          # GitHub Actions runners need multicast enabled for mDNS
+          sudo sysctl -w net.ipv4.conf.all.mc_forwarding=1 || true
+          sudo sysctl -w net.ipv6.conf.all.mc_forwarding=1 || true
+          # Verify multicast routing
+          ip maddress show || true
+
+      - name: Install dependencies
+        run: |
+          # OpenSSL for certificate generation
+          sudo apt-get update
+          sudo apt-get install -y openssl
+          # Verify OpenSSL available
+          openssl version
+
+      - name: Cache rebar3 dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/rebar3
+            _build
+          key: ${{ runner.os }}-rebar3-${{ matrix.otp_version }}-${{ hashFiles('rebar.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rebar3-${{ matrix.otp_version }}-
+
+      - name: Compile project
+        run: rebar3 compile
+
+      - name: Run ${{ matrix.mode }} mode E2E tests
+        env:
+          CI: true  # Test suite can detect CI environment
+          TEST_MODE: ${{ matrix.mode }}
+        run: |
+          rebar3 ct --suite test/e2e/${{ matrix.mode }}_mode_SUITE
+        timeout-minutes: 10  # Per-suite timeout from spec
+
+      - name: Upload test logs (failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.mode }}-otp${{ matrix.otp_version }}-${{ github.run_id }}
+          path: |
+            _build/test/logs/
+            /tmp/gsmlg_epmd_test_*/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload test reports (success)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.mode }}-otp${{ matrix.otp_version }}-${{ github.run_id }}
+          path: _build/test/logs/*.html
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check for orphaned processes
+        if: always()
+        run: |
+          # Verify no test nodes left running
+          if pgrep -f "beam.*gsmlg_epmd_test" > /dev/null 2>&1; then
+            echo "⚠️ Found orphaned test processes, killing them..."
+            pkill -9 -f "beam.*gsmlg_epmd_test" || true
+            exit 1
+          fi
+          echo "✓ No orphaned test processes"
+
+  summary:
+    name: E2E Tests Summary
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" == "success" ]; then
+            echo "✅ All E2E tests passed across all modes and OTP versions"
+          else
+            echo "❌ Some E2E tests failed"
+            exit 1
+          fi

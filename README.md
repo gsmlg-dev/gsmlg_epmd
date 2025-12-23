@@ -511,7 +511,9 @@ gsmlg_epmd_cert:extract_group(Cert) -> {ok, Group} | {error, Reason}.
 
 ## Testing
 
-Run the test suite:
+### Shell Tests
+
+Run the basic test suite:
 
 ```bash
 cd shelltests
@@ -523,6 +525,33 @@ This builds a release and tests:
 - Daemon mode
 - Remote console
 - Basic connectivity
+
+### E2E Connection Tests
+
+Comprehensive end-to-end tests for all three connection modes:
+
+```bash
+# Run all E2E test suites
+rebar3 ct --suite test/e2e/tls_mode_SUITE,test/e2e/static_mode_SUITE,test/e2e/variable_mode_SUITE
+
+# Run individual suites
+rebar3 ct --suite test/e2e/tls_mode_SUITE      # TLS mode tests
+rebar3 ct --suite test/e2e/static_mode_SUITE   # Static port mode tests
+rebar3 ct --suite test/e2e/variable_mode_SUITE # Variable port mode tests
+
+# Run EUnit tests for test helpers
+rebar3 eunit --module=test_node_manager_tests,test_cert_generator_tests,test_connection_helper_tests
+```
+
+**E2E Test Coverage:**
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| `tls_mode_SUITE` | 5 | Auto-discovery, group isolation, cert validation, manual connection, cookie exchange |
+| `static_mode_SUITE` | 4 | Auto mesh, cookie mismatch, port mismatch, new node joins |
+| `variable_mode_SUITE` | 5 | Manual registration, ping registered, cookie mismatch, list nodes, remove node |
+
+**CI/CD:** E2E tests run in GitHub Actions with matrix strategy (3 modes × 3 OTP versions = 9 parallel jobs).
 
 ---
 

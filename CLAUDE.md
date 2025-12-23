@@ -323,3 +323,10 @@ Note: CI only performs static checks and analysis (no unit tests, per global ins
 - **`shelltests/epmdless_test/`**: Test project for CI validation
   - Shell-based integration tests
   - Tests daemon mode, remote console, basic connectivity
+
+## Active Technologies
+- Erlang/OTP 21-27 (test matrix: OTP 23, 25, 27) (001-e2e-connection-tests)
+- Filesystem for test certificates and temporary node data (ephemeral, cleaned after tests) (001-e2e-connection-tests)
+
+## Recent Changes
+- 001-e2e-connection-tests: Added Erlang/OTP 21-27 (test matrix: OTP 23, 25, 27)
