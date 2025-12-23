@@ -58,8 +58,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-rebar3-${{ matrix.otp_version }}-
 
+      - name: Get dependencies
+        run: rebar3 get-deps
+
       - name: Compile project
-        run: rebar3 compile
+        run: DIAGNOSTIC=1 rebar3 compile
 
       - name: Run ${{ matrix.mode }} mode E2E tests
         env:
