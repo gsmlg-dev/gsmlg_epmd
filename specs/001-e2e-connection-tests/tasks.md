@@ -165,7 +165,7 @@
 - [x] T069 Update main README.md with E2E test section in README.md
 - [x] T070 Update CLAUDE.md with E2E test architecture in CLAUDE.md
 - [x] T071 Run full test suite and verify all tests pass with `rebar3 ct` (static_mode_SUITE: 4/4 pass, variable_mode_SUITE: 5/5 pass; TLS mode tests skipped pending production code fix for EPMD callback timing)
-- [ ] T072 Verify CI workflow runs successfully on feature branch
+- [x] T072 Verify CI workflow runs successfully on feature branch (static: 2/2 pass, variable: 2/2 pass, tls: expected fail with continue-on-error)
 
 ---
 
