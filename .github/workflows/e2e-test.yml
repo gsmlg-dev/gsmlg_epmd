@@ -13,22 +13,35 @@ on:
 jobs:
   e2e-tests:
     name: E2E ${{ matrix.mode }} (OTP ${{ matrix.otp_version }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
         mode: [tls, static, variable]
-        otp_version: ['23', '25', '27']
+        otp_version: ['25', '27']  # OTP 23 not available on ubuntu-24.04
+        os: [ubuntu-latest]
+        include:
+          # OTP 23 requires older ubuntu (22.04) for availability
+          - mode: tls
+            otp_version: '23'
+            os: ubuntu-22.04
+          - mode: static
+            otp_version: '23'
+            os: ubuntu-22.04
+          - mode: variable
+            otp_version: '23'
+            os: ubuntu-22.04
       fail-fast: false  # Continue other jobs even if one fails
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Erlang/OTP
+      - name: Setup Erlang/OTP and Elixir
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp_version }}
+          elixir-version: '1.15'  # Required for mdns dependency (uses mix)
           rebar3-version: '3.22'
 
       - name: Enable multicast for mDNS (TLS mode only)
