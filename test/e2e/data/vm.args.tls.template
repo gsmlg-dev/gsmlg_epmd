@@ -1,0 +1,29 @@
+## VM Args Template for TLS Mode E2E Tests
+## Variables: {{NODE_NAME}}, {{DIST_PORT}}, {{SSL_DIST_OPTFILE}}
+
+-sname {{NODE_NAME}}
+-setcookie temporary_will_be_exchanged
+
+## Disable standard EPMD
+-start_epmd false
+
+## Use TLS EPMD module
+-epmd_module gsmlg_epmd_tls
+
+## Distribution port
+-erl_epmd_port {{DIST_PORT}}
+
+## TLS distribution protocol
+-proto_dist inet_tls
+-ssl_dist_optfile {{SSL_DIST_OPTFILE}}
+
+## Kernel configuration
+-kernel inet_dist_listen_min {{DIST_PORT}}
+-kernel inet_dist_listen_max {{DIST_PORT}}
+
+## Code paths
+-pa {{CODE_PATHS}}
+
+## Test-specific settings
++P 1048576
++Q 1048576

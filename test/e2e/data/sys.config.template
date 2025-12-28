@@ -1,0 +1,38 @@
+%% Sys.config Template for E2E Test Nodes
+%% Variables: {{TLS_CERTFILE}}, {{TLS_KEYFILE}}, {{TLS_CACERTFILE}}, {{GROUP}}, {{TLS_PORT}}
+%%
+%% For TLS mode, all certificate variables must be set.
+%% For static/variable modes, certificate variables are ignored.
+
+[
+    {kernel, [
+        {logger_level, info},
+        {logger, [
+            {handler, default, logger_std_h, #{
+                level => info,
+                formatter => {logger_formatter, #{
+                    template => [time, " ", level, " ", msg, "\n"]
+                }}
+            }}
+        ]}
+    ]},
+
+    {gsmlg_epmd, [
+        %% TLS certificate configuration (TLS mode only)
+        {tls_certfile, "{{TLS_CERTFILE}}"},
+        {tls_keyfile, "{{TLS_KEYFILE}}"},
+        {tls_cacertfile, "{{TLS_CACERTFILE}}"},
+
+        %% TLS server port for peer discovery (TLS mode only)
+        {tls_port, {{TLS_PORT}}},
+
+        %% Trust group name - nodes in different groups cannot connect (TLS mode only)
+        {group, "{{GROUP}}"},
+
+        %% Auto-connect to discovered nodes (TLS mode only)
+        {auto_connect, true},
+
+        %% Enable mDNS discovery (TLS mode only)
+        {mdns_enabled, {{MDNS_ENABLED}}}
+    ]}
+].

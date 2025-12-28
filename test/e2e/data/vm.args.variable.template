@@ -1,0 +1,25 @@
+## VM Args Template for Variable Port Mode E2E Tests
+## Variables: {{NODE_NAME}}, {{DIST_PORT}}, {{COOKIE}}
+
+-sname {{NODE_NAME}}
+-setcookie {{COOKIE}}
+
+## Disable standard EPMD
+-start_epmd false
+
+## Use variable port EPMD module (client)
+-epmd_module gsmlg_epmd_client
+
+## Distribution port (each node can have different port)
+-erl_epmd_port {{DIST_PORT}}
+
+## Kernel configuration
+-kernel inet_dist_listen_min {{DIST_PORT}}
+-kernel inet_dist_listen_max {{DIST_PORT}}
+
+## Code paths
+-pa {{CODE_PATHS}}
+
+## Test-specific settings
++P 1048576
++Q 1048576
