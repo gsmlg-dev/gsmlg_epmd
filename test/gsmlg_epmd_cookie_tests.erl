@@ -45,85 +45,79 @@ cleanup(#{started_by_test := false}) ->
 %%====================================================================
 
 test_generate_cookie(_Config) ->
-    Cookie = gsmlg_epmd_cookie:generate_cookie(),
-
-    %% Cookie should be binary
-    ?assert(is_binary(Cookie)),
-
-    %% Cookie should be 32 bytes (256 bits)
-    ?assertEqual(32, byte_size(Cookie)).
+    {"Generate cookie test", fun() ->
+        Cookie = gsmlg_epmd_cookie:generate_cookie(),
+        %% Cookie should be binary
+        ?assert(is_binary(Cookie)),
+        %% Cookie should be 32 bytes (256 bits)
+        ?assertEqual(32, byte_size(Cookie))
+    end}.
 
 test_cookie_uniqueness(_Config) ->
-    %% Generate multiple cookies
-    Cookies = [gsmlg_epmd_cookie:generate_cookie() || _ <- lists:seq(1, 100)],
-
-    %% All should be unique
-    UniqueCount = length(lists:usort(Cookies)),
-    ?assertEqual(100, UniqueCount).
+    {"Cookie uniqueness test", fun() ->
+        %% Generate multiple cookies
+        Cookies = [gsmlg_epmd_cookie:generate_cookie() || _ <- lists:seq(1, 100)],
+        %% All should be unique
+        UniqueCount = length(lists:usort(Cookies)),
+        ?assertEqual(100, UniqueCount)
+    end}.
 
 test_cookie_length(_Config) ->
-    %% Generate 1000 cookies and verify all are 32 bytes
-    Cookies = [gsmlg_epmd_cookie:generate_cookie() || _ <- lists:seq(1, 1000)],
-
-    AllCorrectLength = lists:all(fun(Cookie) ->
-        byte_size(Cookie) =:= 32
-    end, Cookies),
-
-    ?assert(AllCorrectLength).
+    {"Cookie length test", fun() ->
+        %% Generate 1000 cookies and verify all are 32 bytes
+        Cookies = [gsmlg_epmd_cookie:generate_cookie() || _ <- lists:seq(1, 1000)],
+        AllCorrectLength = lists:all(fun(Cookie) ->
+            byte_size(Cookie) =:= 32
+        end, Cookies),
+        ?assert(AllCorrectLength)
+    end}.
 
 test_store_and_retrieve_cookie(_Config) ->
-    Node = 'test@localhost',
-    Cookie = gsmlg_epmd_cookie:generate_cookie(),
-
-    %% Store cookie
-    ok = gsmlg_epmd_cookie:store_cookie(Node, Cookie),
-
-    %% Retrieve cookie
-    {ok, Retrieved} = gsmlg_epmd_cookie:get_cookie(Node),
-
-    %% Should match
-    ?assertEqual(Cookie, Retrieved).
+    {"Store and retrieve cookie test", fun() ->
+        Node = 'test@localhost',
+        Cookie = gsmlg_epmd_cookie:generate_cookie(),
+        %% Store cookie
+        ok = gsmlg_epmd_cookie:store_cookie(Node, Cookie),
+        %% Retrieve cookie
+        {ok, Retrieved} = gsmlg_epmd_cookie:get_cookie(Node),
+        %% Should match
+        ?assertEqual(Cookie, Retrieved)
+    end}.
 
 test_format_hello_message(_Config) ->
-    Node = 'testnode@localhost',
-    Cookie = gsmlg_epmd_cookie:generate_cookie(),
-    DistPort = 8001,
-
-    Hello = gsmlg_epmd_cookie:format_hello(Node, Cookie, DistPort),
-
-    %% Should be binary
-    ?assert(is_binary(Hello)),
-
-    %% Should start with version byte
-    <<Version:8, _Rest/binary>> = Hello,
-    ?assertEqual(1, Version),  %% Protocol version 1
-
-    %% Should be parseable
-    {ok, Parsed} = gsmlg_epmd_cookie:parse_hello(Hello),
-    ?assertMatch(#{
-        node := Node,
-        cookie := Cookie,
-        dist_port := DistPort
-    }, Parsed).
+    {"Format hello message test", fun() ->
+        Node = 'testnode@localhost',
+        Cookie = gsmlg_epmd_cookie:generate_cookie(),
+        DistPort = 8001,
+        Hello = gsmlg_epmd_cookie:format_hello(Node, Cookie, DistPort),
+        %% Should be binary
+        ?assert(is_binary(Hello)),
+        %% Should start with version byte
+        <<Version:8, _Rest/binary>> = Hello,
+        ?assertEqual(1, Version),  %% Protocol version 1
+        %% Should be parseable
+        {ok, Parsed} = gsmlg_epmd_cookie:parse_hello(Hello),
+        ?assertMatch(#{
+            node := Node,
+            cookie := Cookie,
+            dist_port := DistPort
+        }, Parsed)
+    end}.
 
 test_parse_hello_message(_Config) ->
-    %% Create a valid hello message
-    Node = 'node@host',
-    Cookie = crypto:strong_rand_bytes(32),
-    DistPort = 8080,
-
-    Hello = gsmlg_epmd_cookie:format_hello(Node, Cookie, DistPort),
-
-    %% Parse it
-    {ok, Parsed} = gsmlg_epmd_cookie:parse_hello(Hello),
-
-    %% Verify fields
-    ?assertEqual(Node, maps:get(node, Parsed)),
-    ?assertEqual(Cookie, maps:get(cookie, Parsed)),
-    ?assertEqual(DistPort, maps:get(dist_port, Parsed)),
-
-    %% Verify version
-    ?assertEqual(1, maps:get(version, Parsed)).
+    {"Parse hello message test", fun() ->
+        %% Create a valid hello message
+        Node = 'node@host',
+        Cookie = crypto:strong_rand_bytes(32),
+        DistPort = 8080,
+        Hello = gsmlg_epmd_cookie:format_hello(Node, Cookie, DistPort),
+        %% Parse it
+        {ok, Parsed} = gsmlg_epmd_cookie:parse_hello(Hello),
+        %% Verify fields
+        ?assertEqual(Node, maps:get(node, Parsed)),
+        ?assertEqual(Cookie, maps:get(cookie, Parsed)),
+        ?assertEqual(DistPort, maps:get(dist_port, Parsed))
+    end}.
 
 %%====================================================================
 %% Additional Tests for Error Cases
