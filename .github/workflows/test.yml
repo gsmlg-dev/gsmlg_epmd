@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: ['23', '25', '27']
+        otp_version: ['26', '27']  # Only OTP 26+ supported
 
     steps:
       - name: Checkout code
@@ -35,7 +35,7 @@ jobs:
           install-rebar: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             _build
@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload coverage results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-otp${{ matrix.otp_version }}
           path: _build/test/cover/
@@ -72,7 +72,7 @@ jobs:
           cabal-version: '3.10'
 
       - name: Cache Cabal packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cabal/packages
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-otp${{ matrix.otp_version }}
           path: |

@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: ['23', '24', '25', '26', '27']
+        otp_version: ['26', '27']  # Only OTP 26+ supported
 
     steps:
       - name: Checkout code
@@ -28,7 +28,7 @@ jobs:
           rebar3-version: '3.23'
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             _build
@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-rebar3-otp${{ matrix.otp_version }}-
 
       - name: Cache PLT
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: _build/default/*_plt
           key: ${{ runner.os }}-plt-otp${{ matrix.otp_version }}-${{ hashFiles('**/rebar.config') }}
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload Dialyzer results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dialyzer-results-otp${{ matrix.otp_version }}
           path: |
