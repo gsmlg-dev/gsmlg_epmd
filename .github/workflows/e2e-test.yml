@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         mode: [tls, static, variable]
-        otp_version: ['26', '27', '28']  # Only OTP 26+ supported
+        otp_version: ['26', '27']  # OTP 26+ supported (OTP 28 pending rebar3 compatibility)
         os: [ubuntu-22.04]  # Use 22.04 for broader OTP compatibility
       fail-fast: false  # Continue other jobs even if one fails
 
