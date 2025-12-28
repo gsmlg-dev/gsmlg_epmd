@@ -291,8 +291,8 @@ Warning: Found running processes matching 'gsmlg_epmd_test'
 ### GitHub Actions
 
 The e2e-test.yml workflow runs automatically on:
-- Push to `master` branch
-- Pull requests targeting `master`
+- Push to `main` branch
+- Pull requests targeting `main`
 - Manual workflow dispatch
 
 **Matrix execution**:

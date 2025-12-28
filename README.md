@@ -1,7 +1,7 @@
 # GSMLG EPMD - Erlang Distribution without EPMD
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
-![OTP](https://img.shields.io/badge/OTP-21%2B-brightgreen.svg)
+![OTP](https://img.shields.io/badge/OTP-26%2B-brightgreen.svg)
 
 **Zero-configuration auto-meshing Erlang/Elixir clusters with TLS-based trust groups and mDNS discovery.**
 
@@ -87,7 +87,7 @@ Result:
 
 ### Requirements
 
-- **Erlang/OTP**: 21 or newer
+- **Erlang/OTP**: 26 or newer
 - **OpenSSL**: For certificate generation
 - **Docker** (optional): For running examples
 
@@ -97,7 +97,7 @@ Add to your `rebar.config`:
 
 ```erlang
 {deps, [
-    {gsmlg_epmd, {git, "https://github.com/gsmlg-dev/gsmlg_epmd", {branch, "master"}}}
+    {gsmlg_epmd, {git, "https://github.com/gsmlg-dev/gsmlg_epmd", {branch, "main"}}}
 ]}.
 ```
 

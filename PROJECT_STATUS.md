@@ -343,7 +343,7 @@ erl -sname node1@localhost \
 **rebar.config:**
 ```erlang
 {deps, [
-    {gsmlg_epmd, {git, "https://github.com/gsmlg-dev/gsmlg_epmd", {branch, "master"}}}
+    {gsmlg_epmd, {git, "https://github.com/gsmlg-dev/gsmlg_epmd", {branch, "main"}}}
 ]}.
 
 {relx, [{release, {my_app, "1.0.0"},

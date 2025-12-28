@@ -191,7 +191,7 @@ Security requirements below apply according to the operational mode in use.
 - Lint: OTP 23, 24, 25, 26, 27
 - Test: OTP 23, 25, 27 (subset for faster feedback)
 
-**MUST**: CI failures MUST block merging to master branch.
+**MUST**: CI failures MUST block merging to main branch.
 
 ## Performance Standards
 
